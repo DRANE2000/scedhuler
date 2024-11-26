@@ -1,0 +1,101 @@
+<!-- templates/calendar.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Appointment Scheduler - Calendar</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('home') }}">Appointment Scheduler</a>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="container mt-4">
+        <h2>Calendar</h2>
+
+        <!-- Alert container for success messages -->
+        <div id="alertContainer"></div>
+
+        <!-- Toggle Buttons for Calendar Views -->
+        <div class="d-flex justify-content-center mb-3">
+            <button id="monthlyViewBtn" class="btn btn-outline-primary me-2 active">
+                <i class="fa-solid fa-calendar"></i> Monthly View
+            </button>
+            <button id="dailyViewBtn" class="btn btn-outline-secondary">
+                <i class="fa-solid fa-calendar-week"></i> Weekly View
+            </button>
+        </div>
+
+        <!-- Clickable Date Numbers (Dynamic based on Weekly View) -->
+        <div id="dateNumbersContainer" class="date-numbers mb-3" style="display: none;">
+            <ul class="list-inline d-flex justify-content-center gap-2">
+                <!-- Date numbers will be dynamically inserted here -->
+            </ul>
+        </div>
+
+        <!-- Navigation Arrows -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <button id="prevArrow" class="btn btn-danger"><i class="fa-solid fa-chevron-left"></i></button>
+            <button id="nextArrow" class="btn btn-success"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+
+        <!-- Calendar -->
+        <div id="calendar"></div>
+    </main>
+
+    <!-- Modal for Viewing and Deleting Appointment -->
+    <div class="modal fade" id="appointmentModal" tabindex="-1" aria-labelledby="appointmentModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content text-dark">
+                <div class="modal-header">
+                    <h5 id="appointmentModalLabel" class="modal-title">Appointment Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p id="modalDetails"></p>
+
+                    <!-- Price Input Container -->
+                    <div id="priceContainer" class="mb-3" style="display: none;">
+                        <label for="modalPrice" class="form-label">Price ($):</label>
+                        <input type="number" class="form-control" id="modalPrice" step="0.01" placeholder="Enter price">
+                    </div>
+
+                    <!-- Comments Input Container -->
+                    <div id="commentsContainer" class="mb-3">
+                        <label for="modalComments" class="form-label">Comments:</label>
+                        <textarea class="form-control" id="modalComments" rows="3" placeholder="Enter comments"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <input type="hidden" id="appointment_id" value="">
+                    <button type="button" class="btn btn-danger" id="deleteButton">
+                        <i class="fa-solid fa-trash"></i> Delete
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fa-solid fa-save"></i> Save & Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>    
+
+    <!-- Include Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Include FontAwesome JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Include your custom script.js -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

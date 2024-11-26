@@ -1,0 +1,201 @@
+<!-- templates/appointments.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Appointment Scheduler - Appointments</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap CSS, Flatpickr CSS, and Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer" />
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('home') }}">Appointment Scheduler</a>
+      </div>
+    </nav>
+
+    <!-- Alert Container -->
+    <div id="alertContainer"></div>
+
+    <!-- Main Content -->
+    <main class="container mt-4">
+        <h2>Appointments</h2>
+        {% if conflict_message %}
+            <div class="alert alert-warning">{{ conflict_message }}</div>
+        {% endif %}
+
+        <!-- Tabs for different views -->
+        <ul class="nav nav-tabs" id="mainTab" role="tablist">
+          <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="add-business-tab" data-bs-toggle="tab" data-bs-target="#add-business-tab-pane" type="button" role="tab">
+                <i class="fa-solid fa-briefcase"></i> Add Business Appointment
+            </button>
+          </li>
+          <li class="nav-item" role="presentation">
+            <button class="nav-link" id="add-personal-tab" data-bs-toggle="tab" data-bs-target="#add-personal-tab-pane" type="button" role="tab">
+                <i class="fa-solid fa-user"></i> Add Personal Appointment
+            </button>
+          </li>
+        </ul>
+        <div class="tab-content" id="mainTabContent">
+          <!-- Add Business Appointment Tab -->
+          <div class="tab-pane fade show active" id="add-business-tab-pane" role="tabpanel">
+            <form method="post" class="mt-4">
+                <input type="hidden" name="action" value="add_business">
+                {% if conflict_message %}
+                    <input type="hidden" name="confirm" value="yes">
+                {% endif %}
+                <div class="mb-3">
+                    <label for="name" class="form-label">Client Name:</label>
+                    <input type="text" class="form-control" name="name" id="name" required value="{{ form_data.get('name', '') }}">
+                </div>
+                <div class="mb-3">
+                    <label for="service" class="form-label">Service:</label>
+                    <select class="form-select" name="service" id="service" required>
+                        <option value="">Select Service</option>
+                        {% for service in services %}
+                            <option value="{{ service }}" {% if form_data.get('service') == service %}selected{% endif %}>{{ service }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3" id="subServiceContainer" style="display: none;">
+                    <label for="sub_service" class="form-label">Sub-Service:</label>
+                    <select class="form-select" name="sub_service" id="sub_service"></select>
+                </div>
+                <!-- Removed the "Details" and "Optional details" fields -->
+                <div class="mb-3">
+                    <label for="date" class="form-label">Date:</label>
+                    <input type="text" class="form-control" name="date" id="date" required value="{{ form_data.get('date', '') }}">
+                </div>
+                <div class="mb-3">
+                    <label for="time" class="form-label">Time:</label>
+                    <input type="text" class="form-control" name="time" id="time" required value="{{ form_data.get('time', '') }}">
+                </div>
+                <div class="mb-3">
+                    <label for="price" class="form-label">Price ($):</label>
+                    <input type="number" class="form-control" name="price" id="price" step="0.01" placeholder="Enter price">
+                </div>
+                <div class="mb-3">
+                    <label for="comments" class="form-label">Comments:</label>
+                    <textarea class="form-control" name="comments" id="comments" rows="3" placeholder="Enter comments"></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="fa-solid fa-plus"></i> Add Appointment
+                </button>
+            </form>
+          </div>
+          <!-- Add Personal Appointment Tab -->
+          <div class="tab-pane fade" id="add-personal-tab-pane" role="tabpanel">
+            <form method="post" class="mt-4">
+                <input type="hidden" name="action" value="add_personal">
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description:</label>
+                    <input type="text" class="form-control" name="description" id="description" required value="{{ form_data.get('description', '') }}">
+                </div>
+                <div class="mb-3">
+                    <label for="date_personal" class="form-label">Date:</label>
+                    <input type="text" class="form-control" name="date" id="date_personal" required value="{{ form_data.get('date', '') }}">
+                </div>
+                <div class="mb-3">
+                    <label for="time_personal" class="form-label">Time:</label>
+                    <input type="text" class="form-control" name="time" id="time_personal" required value="{{ form_data.get('time', '') }}">
+                </div>
+                <div class="mb-3">
+                    <label for="comments_personal" class="form-label">Comments:</label>
+                    <textarea class="form-control" name="comments" id="comments_personal" rows="3" placeholder="Enter comments"></textarea>
+                </div>
+                <button type="submit" class="btn btn-success">
+                    <i class="fa-solid fa-plus"></i> Add Appointment
+                </button>
+            </form>
+          </div>
+        </div>
+    </main>
+
+    <!-- Include Bootstrap JS, Flatpickr JS, and FontAwesome JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/js/all.min.js" integrity="sha512-..." crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+    <!-- Pass services data to JavaScript -->
+    <script>
+        const servicesData = {{ services | tojson | safe }};
+    </script>
+
+    <!-- Initialize Flatpickr and Service Selection Logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize Flatpickr for date and time inputs
+            flatpickr("#date, #date_personal", {
+                altInput: true,
+                altFormat: "F j, Y",
+                dateFormat: "Y-m-d",
+            });
+
+            flatpickr("#time, #time_personal", {
+                enableTime: true,
+                noCalendar: true,
+                dateFormat: "h:i K",
+                time_24hr: false,
+            });
+
+            // Service selection logic for Business Appointment
+            const serviceSelect = document.getElementById('service');
+            const subServiceContainer = document.getElementById('subServiceContainer');
+            const subServiceSelect = document.getElementById('sub_service');
+            const customSubServiceContainer = document.getElementById('customSubServiceContainer');
+
+            serviceSelect.addEventListener('change', function() {
+                const selectedService = this.value;
+                subServiceSelect.innerHTML = '';
+
+                if (servicesData[selectedService] && typeof servicesData[selectedService] === 'object') {
+                    // Populate sub-service options
+                    const subServices = servicesData[selectedService];
+                    for (const sub in subServices) {
+                        const option = document.createElement('option');
+                        option.value = sub;
+                        option.textContent = sub;
+                        subServiceSelect.appendChild(option);
+                    }
+                    subServiceContainer.style.display = 'block';
+                    customSubServiceContainer.style.display = 'none';
+                } else if (servicesData[selectedService] && typeof servicesData[selectedService] === 'number') {
+                    // No sub-services, allow custom details
+                    subServiceContainer.style.display = 'none';
+                    customSubServiceContainer.style.display = 'block';
+                } else {
+                    // Invalid service
+                    subServiceContainer.style.display = 'none';
+                    customSubServiceContainer.style.display = 'none';
+                }
+            });
+
+            // Additional Logic to Remove "Details" for Specific Subservices
+            subServiceSelect.addEventListener('change', function() {
+                const selectedSubService = this.value.trim().toLowerCase();
+                const servicesToRemoveDetails = ['facial', 'head massage', 'haircut'];
+
+                if (servicesToRemoveDetails.includes(selectedSubService)) {
+                    customSubServiceContainer.style.display = 'none';
+                } else {
+                    customSubServiceContainer.style.display = 'block';
+                }
+            });
+
+            // Trigger change event on page load to set initial state
+            serviceSelect.dispatchEvent(new Event('change'));
+        });
+    </script>
+
+    <!-- Include your custom script.js -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
