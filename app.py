@@ -1,8 +1,6 @@
-# app.py
-
 from flask import Flask, request, jsonify, render_template, redirect, url_for
+from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timedelta
-import sqlite3
 import os
 import logging
 
@@ -11,40 +9,34 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 
-DATABASE = 'appointments.db'
+# Database configuration
+# Use external URL for production, fallback to internal URL if not set
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://scheduler_db_i1gt_user:QfQ4tyhVFx18kHpPQK5GDBzy3FLgna5X@dpg-ct3rmtbtq21c738uo3qg-a.oregon-postgres.render.com/scheduler_db_i1gt")
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize the database
-def init_db():
-    with sqlite3.connect(DATABASE) as conn:
-        cursor = conn.cursor()
-        # Ensure table exists
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS appointments (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                type TEXT NOT NULL,
-                name TEXT,
-                service TEXT,
-                sub_service TEXT,
-                description TEXT,
-                date TEXT NOT NULL,
-                time TEXT NOT NULL,
-                duration INTEGER NOT NULL,
-                price REAL,
-                comments TEXT
-            )
-        ''')
-        conn.commit()
+db = SQLAlchemy(app)
+
+# Define Appointment model
+class Appointment(db.Model):
+    __tablename__ = 'appointments'
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(50), nullable=False)
+    name = db.Column(db.String(100))
+    service = db.Column(db.String(100))
+    sub_service = db.Column(db.String(100))
+    description = db.Column(db.String(200))
+    date = db.Column(db.String(50), nullable=False)
+    time = db.Column(db.String(50), nullable=False)
+    duration = db.Column(db.Integer, nullable=False)
+    price = db.Column(db.Float)
+    comments = db.Column(db.Text)
 
 # Ensure the database is initialized
-init_db()
+# Ensure the database is initialized
+with app.app_context():
+    db.create_all()
 
-def query_db(query, args=(), one=False):
-    with sqlite3.connect(DATABASE) as conn:
-        conn.row_factory = sqlite3.Row
-        cur = conn.execute(query, args)
-        rv = cur.fetchall()
-        cur.close()
-        return (rv[0] if rv else None) if one else rv
 
 @app.route('/')
 def home():
@@ -72,6 +64,7 @@ def appointments_page():
         'Head Massage': 60,
         'Haircut': 60
     }
+
     if request.method == 'POST':
         action = request.form.get('action')
 
@@ -101,11 +94,9 @@ def appointments_page():
                     duration = services[service]
                     sub_service_name = None
                 else:
-                    # Service has no predefined duration, get custom sub-service and duration
                     sub_service_name = custom_sub_service
-                    duration = int(duration_input) if duration_input else 15  # Default duration
+                    duration = int(duration_input) if duration_input else 15
             else:
-                # Invalid service selected
                 conflict_message = "Invalid service selected."
                 return render_template(
                     "appointments.html",
@@ -134,18 +125,12 @@ def appointments_page():
             end_time = end_datetime.strftime('%H:%M')
 
             # Check for conflicts
-            with sqlite3.connect(DATABASE) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    SELECT * FROM appointments WHERE date = ? AND (
-                        (time < ? AND time >= ?) OR
-                        (? < time AND ? > time)
-                    )
-                ''', (date, end_time, start_time, start_time, end_time))
-                conflicts = cursor.fetchall()
+            conflicts = Appointment.query.filter(
+                Appointment.date == date,
+                (Appointment.time < end_time) & (Appointment.time >= start_time)
+            ).all()
 
             if conflicts and not request.form.get('confirm'):
-                # There is a conflict, ask for confirmation
                 conflict_message = "Time conflict detected with existing appointments."
                 return render_template(
                     "appointments.html",
@@ -153,27 +138,22 @@ def appointments_page():
                     conflict_message=conflict_message,
                     form_data=request.form
                 )
-            else:
-                # Proceed to add the appointment
-                data = {
-                    "type": "business",
-                    "name": request.form.get('name'),
-                    "service": service,
-                    "sub_service": sub_service_name,
-                    "date": date,
-                    "time": start_time,
-                    "duration": duration,
-                    "price": float(request.form['price']) if request.form.get('price') else None,
-                    "comments": request.form.get('comments')
-                }
-                with sqlite3.connect(DATABASE) as conn:
-                    cursor = conn.cursor()
-                    cursor.execute('''
-                        INSERT INTO appointments (type, name, service, sub_service, date, time, duration, price, comments)
-                        VALUES (:type, :name, :service, :sub_service, :date, :time, :duration, :price, :comments)
-                    ''', data)
-                    conn.commit()
-                return redirect(url_for('calendar_view'))
+
+            # Add the appointment
+            new_appointment = Appointment(
+                type="business",
+                name=request.form.get('name'),
+                service=service,
+                sub_service=sub_service_name,
+                date=date,
+                time=start_time,
+                duration=duration,
+                price=float(request.form['price']) if request.form.get('price') else None,
+                comments=request.form.get('comments')
+            )
+            db.session.add(new_appointment)
+            db.session.commit()
+            return redirect(url_for('calendar_view'))
 
         elif action == 'add_personal':
             description = request.form.get('description')
@@ -190,22 +170,16 @@ def appointments_page():
                 )
             date = request.form.get('date')
 
-            data = {
-                "type": "personal",
-                "description": description,
-                "date": date,
-                "time": time_24hr,
-                "duration": 30,  # Default duration for personal appointments
-                "comments": request.form.get('comments')
-            }
-
-            with sqlite3.connect(DATABASE) as conn:
-                cursor = conn.cursor()
-                cursor.execute('''
-                    INSERT INTO appointments (type, description, date, time, duration, comments)
-                    VALUES (:type, :description, :date, :time, :duration, :comments)
-                ''', data)
-                conn.commit()
+            new_appointment = Appointment(
+                type="personal",
+                description=description,
+                date=date,
+                time=time_24hr,
+                duration=30,
+                comments=request.form.get('comments')
+            )
+            db.session.add(new_appointment)
+            db.session.commit()
             return redirect(url_for('calendar_view'))
 
         else:
@@ -214,44 +188,43 @@ def appointments_page():
     else:
         return render_template("appointments.html", services=services, form_data={})
 
-# API to get all appointments
 @app.route('/appointments_data', methods=['GET'])
 def get_appointments():
-    appointments = query_db('SELECT * FROM appointments')
-    appointments = [dict(row) for row in appointments]  # Ensure all fields are included
-    return jsonify(appointments)
+    appointments = Appointment.query.all()
+    return jsonify([{
+        'id': a.id,
+        'type': a.type,
+        'name': a.name,
+        'service': a.service,
+        'sub_service': a.sub_service,
+        'description': a.description,
+        'date': a.date,
+        'time': a.time,
+        'duration': a.duration,
+        'price': a.price,
+        'comments': a.comments
+    } for a in appointments])
 
-# Route to handle delete appointment via AJAX
 @app.route('/delete_appointment', methods=['POST'])
 def delete_appointment():
     data = request.get_json()
     appointment_id = int(data['appointment_id'])
-    with sqlite3.connect(DATABASE) as conn:
-        cursor = conn.cursor()
-        cursor.execute('DELETE FROM appointments WHERE id = ?', (appointment_id,))
-        conn.commit()
+    appointment = Appointment.query.get(appointment_id)
+    if appointment:
+        db.session.delete(appointment)
+        db.session.commit()
     return jsonify({"message": "Appointment deleted successfully"})
 
-# Route to handle update appointment via AJAX
 @app.route('/update_appointment', methods=['POST'])
 def update_appointment():
     data = request.get_json()
     appointment_id = data.get('id')
-    price = data.get('price')  # Can be None for personal appointments
-    comments = data.get('comments')
-
-    with sqlite3.connect(DATABASE) as conn:
-        cursor = conn.cursor()
-        cursor.execute('''
-            UPDATE appointments
-            SET price = ?, comments = ?
-            WHERE id = ?
-        ''', (price, comments, appointment_id))
-        conn.commit()
-
+    appointment = Appointment.query.get(appointment_id)
+    if appointment:
+        appointment.price = data.get('price')
+        appointment.comments = data.get('comments')
+        db.session.commit()
     return jsonify({"message": "Appointment updated successfully"})
 
 if __name__ == '__main__':
-    # Ensure the database is initialized
-    init_db()
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(debug=True, host='0.0.0.0', port=5000)
