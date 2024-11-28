@@ -11,7 +11,7 @@ app = Flask(__name__)
 
 # Database configuration
 # Use external URL for production, fallback to internal URL if not set
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://scheduler_db_i1gt_user:QfQ4tyhVFx18kHpPQK5GDBzy3FLgna5X@dpg-ct3rmtbtq21c738uo3qg-a.oregon-postgres.render.com/scheduler_db_i1gt")
+DATABASE_URL = os.getenv("DATABASE_URL")
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -227,4 +227,5 @@ def update_appointment():
     return jsonify({"message": "Appointment updated successfully"})
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 10000))
+    app.run(debug=True, host='0.0.0.0', port=port)
